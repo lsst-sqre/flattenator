@@ -62,7 +62,7 @@ class Flattenator:
         self._pull_image()
         self._inspect_image()
         if len(self.layers) < 2:
-            self.log.warning(f"Image {self.image_tag} is already flattened!")
+            self._reject_preflattened()
             return
         self._extract_docker_change()
         self._push_layered_image()
@@ -71,6 +71,11 @@ class Flattenator:
         self._push_flattened_image()
         self._overwrite_image()
         self._cleanup()
+
+    def _reject_preflattened(self):
+        self.log.warning(f"Image {self.image_tag} is already flattened!")
+        self.log.debug(f"Removing image {self.image_tag}")
+        subprocess.run(["docker", "rmi", self.image_tag])
 
     def _pull_image(self):
         self.log.debug(f"Pulling image {self.image_tag}")
