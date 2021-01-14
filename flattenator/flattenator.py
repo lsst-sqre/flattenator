@@ -28,9 +28,9 @@ class Flattenator:
     def __init__(self, repo: str, tag: str, debug: bool = False):
         if not repo or not tag:
             raise ValueError("Both repo and tag must be specified!")
-        self.image = f"{repo}:{tag}"
         self.repo = repo
         self.tag = tag
+        self.image_tag = f"{repo}:{tag}"
         self.flat_tag = f"{repo}:exp_{tag}_flattened"
         self.layer_tag = f"{repo}:exp_{tag}_layered"
         imgname = repo.split("/")[-1]
@@ -62,7 +62,7 @@ class Flattenator:
         self._pull_image()
         self._inspect_image()
         if len(self.layers) < 2:
-            self.log.warning(f"Image {self.image} is already flattened!")
+            self.log.warning(f"Image {self.image_tag} is already flattened!")
             return
         self._extract_docker_change()
         self._push_layered_image()
@@ -73,14 +73,16 @@ class Flattenator:
         self._cleanup()
 
     def _pull_image(self):
-        self.log.debug(f"Pulling image {self.image}")
+        self.log.debug(f"Pulling image {self.image_tag}")
         subprocess.run(
-            ["docker", "pull", self.image], check=True, capture_output=True
+            ["docker", "pull", self.image_tag], check=True, capture_output=True
         )
 
     def _inspect_image(self):
         proc = subprocess.run(
-            ["docker", "inspect", self.image], check=True, capture_output=True
+            ["docker", "inspect", self.image_tag],
+            check=True,
+            capture_output=True,
         )
         output = proc.stdout.decode("utf-8")
         outer_obj = json.loads(output)
@@ -132,9 +134,9 @@ class Flattenator:
 
     def _tag_layered_image(self):
         # This is broken out from the push to make testing easier.
-        self.log.debug(f"Tagging {self.image} as {self.layer_tag}")
+        self.log.debug(f"Tagging {self.image_tag} as {self.layer_tag}")
         subprocess.run(
-            ["docker", "tag", self.image, self.layer_tag],
+            ["docker", "tag", self.image_tag, self.layer_tag],
             check=True,
             capture_output=True,
         )
@@ -154,7 +156,7 @@ class Flattenator:
                 "run",
                 "--name",
                 self.container_name,
-                self.image,
+                self.image_tag,
                 "/bin/true",
             ],
             check=True,
@@ -170,12 +172,11 @@ class Flattenator:
         )
 
     def _create_flattened_image(self):
-        export_cmd = ["docker", "export", f"{self.tag}"]
+        export_cmd = ["docker", "export", self.container_name]
         import_cmd = ["docker", "import"]
         if self.change:
             import_cmd.extend(self.change)
-            self.flat_tag = f"{self.repo}:exp_{self.tag}_flattened"
-            import_cmd.extend(["-", self.flat_tag])
+        import_cmd.extend(["-", self.flat_tag])
         self.log.debug(f"Export cmd: {export_cmd}")
         self.log.debug(f"Import cmd: {import_cmd}")
         p1 = subprocess.Popen(args=export_cmd, stdout=subprocess.PIPE)
@@ -190,20 +191,20 @@ class Flattenator:
         )
 
     def _overwrite_image(self):
-        self.log.debug(f"Tagging {self.flat_tag} as {self.image}")
+        self.log.debug(f"Tagging {self.flat_tag} as {self.image_tag}")
         subprocess.run(
-            ["docker", "tag", self.flat_tag, self.image],
+            ["docker", "tag", self.flat_tag, self.image_tag],
             check=True,
             capture_output=True,
         )
-        self.log.debug(f"Pushing new {self.image}")
+        self.log.debug(f"Pushing new {self.image_tag}")
         subprocess.run(
-            ["docker", "push", self.image], check=True, capture_output=True
+            ["docker", "push", self.image_tag], check=True, capture_output=True
         )
 
     def _cleanup(self):
         self._remove_container()
-        for img in [self.flat_tag, self.layer_tag, self.image]:
+        for img in [self.flat_tag, self.layer_tag, self.image_tag]:
             self.log.debug(f"Removing image {img}")
             subprocess.run(
                 ["docker", "rmi", img], check=True, capture_output=True

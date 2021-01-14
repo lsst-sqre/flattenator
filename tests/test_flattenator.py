@@ -10,7 +10,9 @@ def test_create_object():
     flat = _make_flat()
     assert flat.tag == "main"
     assert flat.repo == "lsstsqre/flattenatortest"
-    assert flat.image == "lsstsqre/flattenatortest:main"
+    assert flat.image_tag == "lsstsqre/flattenatortest:main"
+    assert flat.layer_tag == "lsstsqre/flattenatortest:exp_main_layered"
+    assert flat.flat_tag == "lsstsqre/flattenatortest:exp_main_flattened"
     assert flat.container_name == "flattenatortest_main"
 
 
