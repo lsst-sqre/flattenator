@@ -143,6 +143,7 @@ class Flattenator:
 
     def _push_layered_image(self):
         self._tag_layered_image()
+        self.log.debug(f"Pushing {self.layer_tag}")
         subprocess.run(
             ["docker", "push", self.layer_tag], check=True, capture_output=True
         )
