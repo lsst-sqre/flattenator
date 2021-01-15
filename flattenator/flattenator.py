@@ -4,6 +4,7 @@ import click
 import json
 import logging
 import subprocess
+from typing import Optional
 
 
 @click.command()
@@ -25,7 +26,13 @@ def standalone(repo: str, tag: str, debug: bool = False):
 class Flattenator:
     """Construct this with a tag and a repo, and optionally a debug bool."""
 
-    def __init__(self, repo: str, tag: str, debug: bool = False):
+    def __init__(
+        self,
+        repo: str,
+        tag: str,
+        debug: bool = False,
+        log: Optional[logging.Logger] = None,
+    ):
         if not repo or not tag:
             raise ValueError("Both repo and tag must be specified!")
         self.repo = repo
@@ -45,14 +52,18 @@ class Flattenator:
         self.volume = None
         self.workdir = None
         self.change = None
-        self.log = logging.getLogger(__name__)
-        if self.debug:
-            self.log.setLevel(logging.DEBUG)
-            self.log.debug("Debug logging enabled.")
-        ch = logging.StreamHandler()
-        if self.debug:
-            ch.setLevel(logging.DEBUG)
-        self.log.addHandler(ch)
+        if log:
+            self.log = log
+        else:
+            # If we have a brand new logging object, configure it.
+            #  Otherwise, use the settings of the passed-in log object.
+            self.log = logging.getLogger(__name__)
+            ch = logging.StreamHandler()
+            self.log.addHandler(ch)
+            if self.debug:
+                ch.setLevel(logging.DEBUG)
+                self.log.setLevel(logging.DEBUG)
+                self.log.debug("Debug logging enabled.")
 
     def flatten(self):
         """Pull an image, extract metadata, flatten, import with
@@ -215,16 +226,16 @@ class Flattenator:
             subprocess.run(
                 ["docker", "rmi", img], check=True, capture_output=True
             )
-            subprocess.run(
-                ["docker", "image", "prune", "-f"],
-                check=True,
-                capture_output=True,
-            )
-            subprocess.run(
-                ["docker", "builder", "prune", "-f"],
-                check=True,
-                capture_output=True,
-            )
+        subprocess.run(
+            ["docker", "image", "prune", "-f"],
+            check=True,
+            capture_output=True,
+        )
+        subprocess.run(
+            ["docker", "builder", "prune", "-f"],
+            check=True,
+            capture_output=True,
+        )
 
 
 if __name__ == "__main__":
