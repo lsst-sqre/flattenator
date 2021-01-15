@@ -1,3 +1,4 @@
+import logging
 from flattenator import Flattenator
 
 #
@@ -19,6 +20,12 @@ def test_create_object():
 def test_debug():
     flat = Flattenator(repo="lsstsqre/flattenatortest", tag="main", debug=True)
     assert flat.debug is True
+
+
+def test_log():
+    log = logging.getLogger("test")
+    flat = Flattenator(repo="lsstsqre/flattenatortest", tag="main", log=log)
+    assert flat.log == log
 
 
 def test_inspect():
